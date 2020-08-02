@@ -19,14 +19,15 @@ import pandas as pd
 # print(li.target)
 # print(li.DESCR)
 
-# 注意返回值, 训练集 train  x_train, y_train        测试集  test   x_test, y_test
+# 用于在一个数据集中分割训练数据和测试数据，毕竟两者不能相同
+# 注意返回值, 训练集 train  x_train, y_train 测试集  test   x_test, y_test
 # x_train, x_test, y_train, y_test = train_test_split(li.data, li.target, test_size=0.25)
-#
+
 # print("训练集特征值和目标值：", x_train, y_train)
 # print("测试集特征值和目标值：", x_test, y_test)
 
 # news = fetch_20newsgroups(subset='all')
-#
+# #
 # print(news.data)
 # print(news.target)
 #
@@ -224,8 +225,5 @@ def decision():
 
     return None
 
-
-if __name__ == "__main__":
-    decision()
-
-
+# if __name__ == "__main__":
+# decision()
