@@ -189,7 +189,7 @@ def myregression():
         filewriter = tf.summary.FileWriter("./tmp/summary/test/", graph=sess.graph)
 
         # 加载模型，覆盖模型当中随机定义的参数，从上次训练的参数结果开始
-        if os.path.exists("./tmp/ckpt/checkpoint"):
+        if os.path.exists("tmp/ckpt/checkpoint"):
             saver.restore(sess, FLAGS.model_dir)
 
         # 循环训练 运行优化
