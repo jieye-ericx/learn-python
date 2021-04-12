@@ -85,34 +85,36 @@ import numpy as np
 
 
 # --------------------nn
+print(torch.cuda.is_available())
 
-N = 64  # 训练数据个数
-D_in = 1000  # 输入维度
-H = 100  # 隐藏层神经元个数？
-D_out = 10  # 输出维度
+# N = 64  # 训练数据个数
+# D_in = 1000  # 输入维度
+# H = 100  # 隐藏层神经元个数？
+# D_out = 10  # 输出维度
 
-# 随机训练数据
-x = torch.randn(N, D_in)
-y = torch.randn(N, D_out)
+# # 随机训练数据
+# x = torch.randn(N, D_in)
+# y = torch.randn(N, D_out)
 
-model = torch.nn.Sequential(
-    torch.nn.Linear(D_in, H),  # w_1*x+b
-    torch.nn.ReLU(),
-    torch.nn.Linear(H, D_out)
-)
-learning_rate = 1e-6
-loss_fn = torch.nn.MSELoss(reduction='sum')
-optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+# model = torch.nn.Sequential(
+#     torch.nn.Linear(D_in, H),  # w_1*x+b
+#     torch.nn.ReLU(),
+#     torch.nn.Linear(H, D_out)
+# )
+# learning_rate = 1e-6
+# loss_fn = torch.nn.MSELoss(reduction='sum')
+# optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
 
-for it in range(500):
-    y_pred = model(x)  # model.forward()
+# for it in range(500):
+#     y_pred = model(x)  # model.forward()
 
-    #     计算损失
-    loss = loss_fn(y_pred, y)  # 均方误差,代表一个计算图
-    print(it, loss.item())
+#     #     计算损失
 
-    optimizer.zero_grad()
-    loss.backward()
+#     loss = loss_fn(y_pred, y)  # 均方误差,代表一个计算图
+#     print(it, loss.item())
 
-    optimizer.step()
+#     optimizer.zero_grad()
+#     loss.backward()
+
+#     optimizer.step()
