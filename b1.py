@@ -60,13 +60,14 @@ import numpy as np
 # # 随机训练数据
 # x = torch.randn(N, D_in)
 # y = torch.randn(N, D_out)
-#
+# 随机初始化权重
 # w1 = torch.randn(D_in, H, requires_grad=True)
 # w2 = torch.randn(H, D_out, requires_grad=True)
 #
 # learning_rate = 1e-6
 #
 # for it in range(500):
+# 前向传播：计算预测值y
 #     # h = x.mm(w1)  # N*H
 #     # h_relu = h.clamp(min=0)  # N*H
 #     y_pred = x.mm(w1).clamp(min=0).mm(w2)  # N*D_out
@@ -87,23 +88,14 @@ import numpy as np
 # --------------------nn
 print(torch.cuda.is_available())
 
-# N = 64  # 训练数据个数
-# D_in = 1000  # 输入维度
-# H = 100  # 隐藏层神经元个数？
-# D_out = 10  # 输出维度
+N = 64  # 训练数据个数
+D_in = 1000  # 输入维度
+H = 100  # 隐藏层维度
+D_out = 10  # 输出维度
 
-# # 随机训练数据
-# x = torch.randn(N, D_in)
-# y = torch.randn(N, D_out)
-
-# model = torch.nn.Sequential(
-#     torch.nn.Linear(D_in, H),  # w_1*x+b
-#     torch.nn.ReLU(),
-#     torch.nn.Linear(H, D_out)
-# )
-# learning_rate = 1e-6
-# loss_fn = torch.nn.MSELoss(reduction='sum')
-# optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+# 随机训练数据
+x = torch.randn(N, D_in)  # 64行1000列
+y = torch.randn(N, D_out)  # 64行10列
 
 
 # for it in range(500):
