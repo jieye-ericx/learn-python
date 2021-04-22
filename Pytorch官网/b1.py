@@ -97,7 +97,6 @@ D_out = 10  # 输出维度
 x = torch.randn(N, D_in)  # 64行1000列
 y = torch.randn(N, D_out)  # 64行10列
 
-
 # for it in range(500):
 #     y_pred = model(x)  # model.forward()
 

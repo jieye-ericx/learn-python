@@ -1,13 +1,15 @@
+# https://zhuanlan.zhihu.com/p/94757947
 import numpy as np
 import torch
 from torch import nn
+import pandas as pd
 
 import matplotlib.pyplot as plt
 
 """
 Github: Yonv1943 Zen4 Jia1 hao2
 https://github.com/Yonv1943/DL_RL_Zoo/blob/master/RNN
-The source of training data 
+The source of training data
 https://github.com/L1aoXingyu/
 code-of-learn-deep-learning-with-pytorch/blob/master/
 chapter5_RNN/time-series/lstm-time-series.ipynb
@@ -96,26 +98,27 @@ def run_train_gru():
 
 
 def run_train_lstm():
-    inp_dim = 3
-    out_dim = 1
-    mid_dim = 8
+    inp_dim = 3  # 是LSTM输入张量的维度，我们已经根据我们的数据确定了这个值是3
+    out_dim = 1  # 我们只需要预测客流量这一个值，因此out_dim 为1
+    mid_dim = 8  # mid_dim 是LSTM三个门 (gate) 的网络宽度，也是LSTM输出张量的维度
     mid_layers = 1
     batch_size = 12 * 4
     mod_dir = '.'
 
     '''load data'''
     data = load_data()
-    data_x = data[:-1, :]
+    data_x = data[:-1, :]  # 删除最后一行 143*3
     data_y = data[+1:, 0]
     assert data_x.shape[1] == inp_dim
 
+    # 取整前四分之三的训练数据数量
     train_size = int(len(data_x) * 0.75)
 
     train_x = data_x[:train_size]
-    train_y = data_y[:train_size]
+    train_y = data_y[:train_size]  # (107,)
     train_x = train_x.reshape((train_size, inp_dim))
-    train_y = train_y.reshape((train_size, out_dim))
-
+    train_y = train_y.reshape((train_size, out_dim))  # (107,1)
+    # 以上都是准备数据
     '''build model'''
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     net = RegLSTM(inp_dim, out_dim, mid_dim, mid_layers).to(device)
@@ -130,12 +133,22 @@ def run_train_lstm():
     batch_var_y = list()
 
     for i in range(batch_size):
-        j = train_size - i
-        batch_var_x.append(var_x[j:])
-        batch_var_y.append(var_y[j:])
+        j = train_size - i  # 不同的起始裁剪位点
+        batch_var_x.append(var_x[j:])  # 在训练中作为输入的客流量数据（年份、月份、本月的客流量）
+        batch_var_y.append(var_y[j:])  # 在训练中作为标签的预测数据（下个月的客流量）
+    """
+    输入多个拥有相同起始裁剪位点的序列给RNN用于训练是完全错误的训练方式。
+    当你输入一个序列给RNN时，合格的深度学习框架中的RNN就已经帮你训练了拥有相同
+    起始位点的所有序列，这个时候还额外地输入其他拥有相同起始裁剪位点的序列给RNN
+    会导致RNN更快地过拟合。由于数据是这么地少，因此我们只能使用同一个batch进行训练
+    （非常容易过拟合），但因为有这个数据构建方法，所以我们不需要训练太久，几秒钟就可以了。
+    batch_var_x.append(var_x[j:])  # 不同的起始裁剪位点，正确的裁剪方法
+    batch_var_x.append(var_x[:j])  # 相同的起始裁剪位点，**完全错误的裁剪方法**
+     """
 
     from torch.nn.utils.rnn import pad_sequence
     batch_var_x = pad_sequence(batch_var_x)
+    # 用于在开头添加   [0.,   0.,   0.]
     batch_var_y = pad_sequence(batch_var_y)
 
     with torch.no_grad():
@@ -161,9 +174,9 @@ def run_train_lstm():
 
     '''eval'''
     net.load_state_dict(torch.load('{}/net.pth'.format(mod_dir),
-                        map_location=lambda storage, loc: storage))
+                                   map_location=lambda storage, loc: storage))
     net = net.eval()
-
+    # 这里把上面训练好的模型保存再取出，然后划分出测试集进行训练
     test_x = data_x.copy()
     test_x[train_size:, 0] = 0
     test_x = test_x[:, np.newaxis, :]
@@ -178,6 +191,7 @@ def run_train_lstm():
     eval_size = 1
     zero_ten = torch.zeros((mid_layers, eval_size, mid_dim),
                            dtype=torch.float32, device=device)
+    # 我们需要保存LSTM的隐藏状态（hidden state），用于恢复序列中断后的计算。
     test_y, hc = net.output_y_hc(test_x[:train_size], (zero_ten, zero_ten))
     test_x[train_size + 1, 0, 0] = test_y[-1]
     for i in range(train_size + 1, len(data) - 2):
@@ -247,7 +261,7 @@ def run_origin():
     net = net.eval()  # 转换成测试模式
 
     """
-    inappropriate way of seq prediction: 
+    inappropriate way of seq prediction:
     use all real data to predict the number of next month
     """
     test_x = data_x.reshape((-1, 1, inp_dim))
@@ -260,7 +274,7 @@ def run_origin():
     plt.plot([train_size, train_size], [-1, 2], label='train | pred')
 
     """
-    appropriate way of seq prediction: 
+    appropriate way of seq prediction:
     use real+pred data to predict the number of next 3 years.
     """
     test_x = data_x.reshape((-1, 1, inp_dim))
@@ -283,7 +297,11 @@ class RegLSTM(nn.Module):
     def __init__(self, inp_dim, out_dim, mid_dim, mid_layers):
         super(RegLSTM, self).__init__()
 
-        self.rnn = nn.LSTM(inp_dim, mid_dim, mid_layers)  # rnn
+        self.rnn = nn.LSTM(inp_dim, mid_dim, mid_layers)
+        # rnn
+        # inp_dim 是LSTM输入张量的维度，我们已经根据我们的数据确定了这个值是3
+        # mid_dim 是LSTM三个门 (gate) 的网络宽度，也是LSTM输出张量的维度
+        # num_layers 是使用两个LSTM对数据进行预测，然后将他们的输出堆叠起来。
         self.reg = nn.Sequential(
             nn.Linear(mid_dim, mid_dim),
             nn.Tanh(),
@@ -366,25 +384,38 @@ def load_data():
     # plt.plot(seq_number)
     # plt.ion()
     # plt.pause(1)
+    # 新增一列
     seq_number = seq_number[:, np.newaxis]
-
+    # print(seq_number)
     # print(repr(seq))
+
     # 1949~1960, 12 years, 12*12==144 month
     seq_year = np.arange(12)
     seq_month = np.arange(12)
+
+    # numpy.repeat(a, repeats, axis=None)
+    # 其中a为数组，repeats为重复的次数，axis表示数组维度
     seq_year_month = np.transpose(
         [np.repeat(seq_year, len(seq_month)),
          np.tile(seq_month, len(seq_year))],
-    )  # Cartesian Product
+    )
+    # 给数据seq_number加上标号，如 0 1 xxx第0年第一月流量是xxx,最后一行为11 11 xxx
+    # print(seq_year_month)
+
+    # Cartesian Product
 
     seq = np.concatenate((seq_number, seq_year_month), axis=1)
+    # print(seq)
+    # [112.   0.   0.] 144行，每行是这样[432.  11.  11.]
 
     # normalization
+    # 在寒假学习的ML.md中这叫做标准化
     seq = (seq - seq.mean(axis=0)) / seq.std(axis=0)
     return seq
 
 
 if __name__ == '__main__':
-    run_train_lstm()
+    # run_train_lstm()
     # run_train_gru()
     # run_origin()
+    print(load_data())
