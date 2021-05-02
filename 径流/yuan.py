@@ -15,8 +15,6 @@ code-of-learn-deep-learning-with-pytorch/blob/master/
 chapter5_RNN/time-series/lstm-time-series.ipynb
 """
 
-LSTM、Attention、Transformor
-
 
 def run_train_gru():
     inp_dim = 3

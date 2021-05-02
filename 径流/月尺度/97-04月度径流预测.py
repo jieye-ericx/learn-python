@@ -115,7 +115,7 @@ def run_train_lstm():
 
     '''eval'''
     net.load_state_dict(torch.load('{}/net.pth'.format(mod_dir),
-                                   map_location=lambda storage, loc: storage))
+                        map_location=lambda storage, loc: storage))
     net = net.eval()
 
     test_x = data_x.copy()
@@ -130,7 +130,8 @@ def run_train_lstm():
 
     '''elegant way but slightly complicated'''
     eval_size = 1
-    zero_ten = torch.zeros((mid_layers, eval_size, mid_dim), dtype=torch.float32, device=device)
+    zero_ten = torch.zeros((mid_layers, eval_size, mid_dim),
+                           dtype=torch.float32, device=device)
     test_y, hc = net.output_y_hc(test_x[:train_size], (zero_ten, zero_ten))
     test_x[train_size + 1, 0, 0] = test_y[-1]
     for i in range(train_size + 1, len(data) - 2):
@@ -146,7 +147,8 @@ def run_train_lstm():
 
     plt.plot(pred_y, 'r', label='pred')
     plt.plot(data_y, 'b', label='real', alpha=0.3)
-    plt.plot([train_size, train_size], [-1, 2], color='k', label='train | pred')
+    plt.plot([train_size, train_size], [-1, 2],
+             color='k', label='train | pred')
     plt.legend(loc='best')
     plt.savefig('lstm_9704_月尺度.png')
     plt.pause(4)
@@ -179,7 +181,10 @@ def load_my_data():
                     tmp += data[cnt][2]
                     cnt += 1
                 # newData.append([tmp / seq_day_p[j], i, j])
-                newData[cnt1][0] = tmp / seq_day_p[j]
+                # 月总流量/月的天数
+                # newData[cnt1][0] = tmp / seq_day_p[j]
+                # 月总流量
+                newData[cnt1][0] = tmp
                 cnt1 += 1
     # print(newData)
 
