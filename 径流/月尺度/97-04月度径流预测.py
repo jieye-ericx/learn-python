@@ -157,7 +157,9 @@ def run_train_lstm():
 def load_my_data():
     seq_day_p = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
     seq_day_r = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
-    origindata = pd.read_csv("../oriDataset/97-04rainstream.csv")
+    origindata = pd.read_csv(
+        "/Users/radoapx/PycharmProjects/py-study/径流/oriDataset/97-04rainstream.csv")
+    # origindata = pd.read_csv("../oriDataset/97-04rainstream.csv")
     data = origindata.to_numpy()
 
     newData = np.zeros([96, 1], dtype=np.float32)
