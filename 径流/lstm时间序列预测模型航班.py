@@ -12,7 +12,7 @@ Original file is located at
 # https://www.cnblogs.com/ljwgis/p/13107623.html
 import torch
 import torch.nn as nn
-import seaborn as sns  #读取seaborn的数据文件，需要ladder
+import seaborn as sns  # 读取seaborn的数据文件，需要ladder
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -27,23 +27,25 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 flight_data = sns.load_dataset("flights")
 # print(flight_data.head(10))
 # print(flight_data.tail(5))
-all_data = flight_data['passengers'].values.astype(float)
+all_data = flight_data["passengers"].values.astype(float)
 # print(len(all_data))
-#一共144行数据，这里设置每12个数据为一个间隔（1年为12月）
-#任务是根据前132个月（共11年）来预测最近12个月内旅行的乘客人数。
+# 一共144行数据，这里设置每12个数据为一个间隔（1年为12月）
+# 任务是根据前132个月（共11年）来预测最近12个月内旅行的乘客人数。
 # 请记住，我们有144个月的记录，这意味着前132个月的数据将用于训练我们的LSTM模型
 # 而模型性能将使用最近12个月的值进行评估。
 
-#最后待验证的数据集（月份数目）大小，数值可以修改，记得修改最后plot对应的x范围即可
-test_data_size = 12   
-train_data = all_data[:-test_data_size] #训练数据
-test_data = all_data[-test_data_size:]  #测试数据
+# 最后待验证的数据集（月份数目）大小，数值可以修改，记得修改最后plot对应的x范围即可
+test_data_size = 12
+train_data = all_data[:-test_data_size]  # 训练数据
+test_data = all_data[-test_data_size:]  # 测试数据
 
-#归一化处理减小误差
-scaler = MinMaxScaler(feature_range=(-1,1))
-train_data_normalized = scaler.fit_transform(train_data.reshape(-1,1))
+# 归一化处理减小误差
+scaler = MinMaxScaler(feature_range=(-1, 1))
+train_data_normalized = scaler.fit_transform(train_data.reshape(-1, 1))
 
-train_data_normalized = torch.tensor(train_data_normalized,device=device,dtype=torch.float32).view(-1)
+train_data_normalized = torch.tensor(
+    train_data_normalized, device=device, dtype=torch.float32
+).view(-1)
 # 我的方法（标准化）
 # train_data_normalized = (train_data_normalized - train_data_normalized.mean(axis=0)) / train_data_normalized.std(axis=0)
 
@@ -52,19 +54,20 @@ train_data_normalized = torch.tensor(train_data_normalized,device=device,dtype=t
 print(len(train_data_normalized))
 train_data_normalized[:5]
 
-#重点  创建读取的数据列表。
-#每组数据有2个元组。前一个元组有12个月份的数据，后一个元组只有一个元素，表示第13个月份的数据，用于和基于前12个数据预测的数据求loss
+# 重点  创建读取的数据列表。
+# 每组数据有2个元组。前一个元组有12个月份的数据，后一个元组只有一个元素，表示第13个月份的数据，用于和基于前12个数据预测的数据求loss
 def create_inout_sequences(input_data, tw):
     inout_seq = []
     L = len(input_data)
-    for i in range(L-tw):  #L-tw = 144-12 = 132个数据
-        train_seq = input_data[i:i+tw]  #12个数据一组，进行训练
-        train_label = input_data[i+tw:i+tw+1]  #第12+1个数据作为label计算loss
-        inout_seq.append((train_seq, train_label))  
+    for i in range(L - tw):  # L-tw = 144-12 = 132个数据
+        train_seq = input_data[i : i + tw]  # 12个数据一组，进行训练
+        train_label = input_data[i + tw : i + tw + 1]  # 第12+1个数据作为label计算loss
+        inout_seq.append((train_seq, train_label))
     return inout_seq
 
-#这是每次训练的数据（月份数目），设置为12个月，可以进行调整
-train_window = 12  #tw，设置训练输入的序列长度为12
+
+# 这是每次训练的数据（月份数目），设置为12个月，可以进行调整
+train_window = 12  # tw，设置训练输入的序列长度为12
 train_inout_seq = create_inout_sequences(train_data_normalized, train_window)
 print(len(train_inout_seq))
 train_inout_seq[:3]
@@ -87,85 +90,101 @@ train_inout_seq[:3]
 ​在forward方法内部，将`input_seq`作为参数传递给`lstm`图层。`lstm`层的输出是当前时间步的隐藏状态和单元状态以及输出。`lstm`图层的输出将传递到该`linear`图层。预计的乘客人数存储在`predictions`列表的最后一项中，并返回到调用函数。
 """
 
+
 class LSTM(nn.Module):
     def __init__(self, input_size=1, hidden_layer_size=100, output_size=1):
         super().__init__()
         self.hidden_layer_size = hidden_layer_size
 
-        self.lstm = nn.LSTM(input_size, hidden_layer_size)  #lstm层
+        self.lstm = nn.LSTM(input_size, hidden_layer_size)  # lstm层
 
-        self.linear = nn.Linear(hidden_layer_size, output_size)  #全连接层
+        self.linear = nn.Linear(hidden_layer_size, output_size)  # 全连接层
 
-        self.hidden_cell = (torch.zeros(1,1,self.hidden_layer_size,device=device), #hidden_cell层
-                            torch.zeros(1,1,self.hidden_layer_size,device=device))
+        self.hidden_cell = (
+            torch.zeros(1, 1, self.hidden_layer_size, device=device),  # hidden_cell层
+            torch.zeros(1, 1, self.hidden_layer_size, device=device),
+        )
 
     def forward(self, input_seq):
-        #lstm处理序列数据，并传递到hidden_cell，输出lstm_out
-        #输入数据格式：input(seq_len, batch, input_size)
-        #seq_len：每个序列的长度
-        #batch_size:设置为1
-        #input_size:输入矩阵特征数
-        lstm_out, self.hidden_cell = self.lstm(input_seq.view(len(input_seq) ,1, -1), self.hidden_cell)
-        #全连接层输出predictions
+        # lstm处理序列数据，并传递到hidden_cell，输出lstm_out
+        # 输入数据格式：input(seq_len, batch, input_size)
+        # seq_len：每个序列的长度
+        # batch_size:设置为1
+        # input_size:输入矩阵特征数
+        lstm_out, self.hidden_cell = self.lstm(
+            input_seq.view(len(input_seq), 1, -1), self.hidden_cell
+        )
+        # 全连接层输出predictions
         predictions = self.linear(lstm_out.view(len(input_seq), -1))
         return predictions[-1]
+
 
 """# 训练"""
 
 model = LSTM().to(device)
-loss_function = nn.MSELoss() #损失函数
-optimizer = torch.optim.Adam(model.parameters(), lr=0.001)  #优化器
+loss_function = nn.MSELoss()  # 损失函数
+optimizer = torch.optim.Adam(model.parameters(), lr=0.001)  # 优化器
 
 start = time.time()
-epochs = 15
-print('开始，使用：',device)
-if device.type=='cuda': print(torch.cuda.get_device_name(0))
+epochs = 10
+print("开始，使用：", device)
+if device.type == "cuda":
+    print(torch.cuda.get_device_name(0))
 
 for i in range(epochs):
     for seq, labels in train_inout_seq:
         optimizer.zero_grad()
-        
-        #补充作用？
-        model.hidden_cell = (torch.zeros(1,1,model.hidden_layer_size,device=device),torch.zeros(1,1,model.hidden_layer_size,device=device))
-        
+
+        # 补充作用？
+        model.hidden_cell = (
+            torch.zeros(1, 1, model.hidden_layer_size, device=device),
+            torch.zeros(1, 1, model.hidden_layer_size, device=device),
+        )
+
         y_pred = model(seq)
         single_loss = loss_function(y_pred, labels)
         single_loss.backward()
         optimizer.step()
-    if i%5 == 0:
-        print(f'epoch:{i:3} loss: {single_loss.item():10.8f}')
+    if i % 5 == 0:
+        print(f"epoch:{i:3} loss: {single_loss.item():10.8f}")
 
-print(f'epoch:{i:3} loss: {single_loss.item():10.10f}')
+print(f"epoch:{i:3} loss: {single_loss.item():10.10f}")
 end = time.time()
 
-print('结束，花费',str(end-start))
+print("结束，花费", str(end - start))
 
 """# 预测 绘图"""
 
-fut_pred = 12  #预测fut_pred个数据  
+fut_pred = 12  # 预测fut_pred个数据
 test_inputs = train_data_normalized[-train_window:].tolist()
-#取出最后12个月数据为列表 待预测的数据是第133个起
-model.eval()  #eval模式，不更新梯度
-#预测133~（133+11）个数据  12
+# 取出最后12个月数据为列表 待预测的数据是第133个起
+model.eval()  # eval模式，不更新梯度
+# 预测133~（133+11）个数据  12
 for i in range(fut_pred):
-    seq = torch.tensor(test_inputs[-train_window:],device=device,dtype=torch.float32)  #取出最后12个数据
+    seq = torch.tensor(
+        test_inputs[-train_window:], device=device, dtype=torch.float32
+    )  # 取出最后12个数据
     with torch.no_grad():
-        model.hidden_cell = (torch.zeros(1,1,model.hidden_layer_size,device=device),torch.zeros(1,1,model.hidden_layer_size,device=device))
-        test_inputs.append(model(seq).item())  #每次输出一个预测值，加到列表
+        model.hidden_cell = (
+            torch.zeros(1, 1, model.hidden_layer_size, device=device),
+            torch.zeros(1, 1, model.hidden_layer_size, device=device),
+        )
+        test_inputs.append(model(seq).item())  # 每次输出一个预测值，加到列表
 
 # print(test_inputs[train_window:])  #train_window起才是预测的数据(训练集中最后一组训练数据)
 
-#逆归一化回原值范围,test_inputs中排除前12个数据（训练数据）
-actual_predictions = scaler.inverse_transform(np.array(test_inputs[train_window:] ).reshape(-1, 1))
+# 逆归一化回原值范围,test_inputs中排除前12个数据（训练数据）
+actual_predictions = scaler.inverse_transform(
+    np.array(test_inputs[train_window:]).reshape(-1, 1)
+)
 
 
-x = np.arange(132, 132+fut_pred, 1)# 表示图中132-144这个范围
-plt.title('Month vs Passenger')
-plt.ylabel('Total Passengers')
+x = np.arange(132, 132 + fut_pred, 1)  # 表示图中132-144这个范围
+plt.title("Month vs Passenger")
+plt.ylabel("Total Passengers")
 plt.grid(True)
-plt.autoscale(axis='x', tight=True)
-plt.plot(np.arange(0,132,1), train_data)
-plt.plot(x, test_data)  #test_data只有12个数据真实值
-plt.plot(x, actual_predictions)#绿色是预测
+plt.autoscale(axis="x", tight=True)
+plt.plot(np.arange(0, 132, 1), train_data)
+plt.plot(x, test_data)  # test_data只有12个数据真实值
+plt.plot(x, actual_predictions)  # 绿色是预测
 plt.show()
-
