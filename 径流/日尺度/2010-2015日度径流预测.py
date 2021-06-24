@@ -13,9 +13,9 @@ def run_train_lstm():
     mid_dim = 8
     mid_layers = 1
     batch_size = 12 * 4
-    mod_dir = '.'
+    mod_dir = "."
 
-    '''load data'''
+    """load data"""
     data = load_my_data()
     data_x = data[:-1, :]
     data_y = data[+1:, 0]
@@ -28,13 +28,13 @@ def run_train_lstm():
     train_x = train_x.reshape((train_size, inp_dim))
     train_y = train_y.reshape((train_size, out_dim))
 
-    '''build model'''
+    """build model"""
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     net = RegLSTM(inp_dim, out_dim, mid_dim, mid_layers).to(device)
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(net.parameters(), lr=1e-2)
 
-    '''train'''
+    """train"""
     var_x = torch.tensor(train_x, dtype=torch.float32, device=device)
     var_y = torch.tensor(train_y, dtype=torch.float32, device=device)
 
@@ -47,6 +47,7 @@ def run_train_lstm():
         batch_var_y.append(var_y[j:])
 
     from torch.nn.utils.rnn import pad_sequence
+
     batch_var_x = pad_sequence(batch_var_x)
     batch_var_y = pad_sequence(batch_var_y)
 
@@ -55,7 +56,7 @@ def run_train_lstm():
         weights = torch.tensor(weights, dtype=torch.float32, device=device)
 
     print("Training Start")
-    for e in range(3840):
+    for e in range(200):
         out = net(batch_var_x)
 
         # loss = criterion(out, batch_var_y)
@@ -67,12 +68,12 @@ def run_train_lstm():
         optimizer.step()
 
         if e % 64 == 0:
-            print('Epoch: {:4}, Loss: {:.5f}'.format(e, loss.item()))
+            print("Epoch: {:4}, Loss: {:.5f}".format(e, loss.item()))
 
     # torch.save(net.state_dict(), '{}/net.pth'.format(mod_dir))
-    print("Save in:", '{}/net.pth'.format(mod_dir))
+    print("Save in:", "{}/net.pth".format(mod_dir))
 
-    '''eval'''
+    """eval"""
     # net.load_state_dict(torch.load('{}/net.pth'.format(mod_dir), map_location=lambda storage, loc: storage))
     net = net.eval()
 
@@ -81,18 +82,20 @@ def run_train_lstm():
     test_x = test_x[:, np.newaxis, :]
     test_x = torch.tensor(test_x, dtype=torch.float32, device=device)
 
-    '''simple way but no elegant'''
+    """simple way but no elegant"""
     # for i in range(train_size, len(data) - 2):
     #     test_y = net(test_x[:i])
     #     test_x[i, 0, 0] = test_y[-1]
 
-    '''elegant way but slightly complicated'''
+    """elegant way but slightly complicated"""
     eval_size = 1
-    zero_ten = torch.zeros((mid_layers, eval_size, mid_dim), dtype=torch.float32, device=device)
+    zero_ten = torch.zeros(
+        (mid_layers, eval_size, mid_dim), dtype=torch.float32, device=device
+    )
     test_y, hc = net.output_y_hc(test_x[:train_size], (zero_ten, zero_ten))
     test_x[train_size + 1, 0, 0] = test_y[-1]
     for i in range(train_size + 1, len(data) - 2):
-        test_y, hc = net.output_y_hc(test_x[i:i + 1], hc)
+        test_y, hc = net.output_y_hc(test_x[i : i + 1], hc)
         test_x[i + 1, 0, 0] = test_y[-1]
     pred_y = test_x[1:, 0, 0]
     pred_y = pred_y.cpu().data.numpy()
@@ -102,11 +105,11 @@ def run_train_lstm():
     l2_loss = np.mean(diff_y ** 2)
     print("L1: {:.3f}    L2: {:.3f}".format(l1_loss, l2_loss))
 
-    plt.plot(pred_y, 'r', label='pred')
-    plt.plot(data_y, 'b', label='real', alpha=0.3)
-    plt.plot([train_size, train_size], [-1, 2], color='k', label='train | pred')
-    plt.legend(loc='best')
-    plt.savefig('lstm_1015_日尺度.png')
+    plt.plot(pred_y, "r", label="pred")
+    plt.plot(data_y, "b", label="real", alpha=0.3)
+    plt.plot([train_size, train_size], [-1, 2], color="k", label="train | pred")
+    plt.legend(loc="best")
+    plt.savefig("lstm_1015_日尺度.png")
     plt.pause(4)
 
 
@@ -155,7 +158,7 @@ def load_my_data():
     # seq_month = np.arange(12)
     # seq_day_p = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
     # seq_day_r = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
-    origindata = pd.read_excel("../oriDataset/2010-2015.xlsx")
+    origindata = pd.read_excel("径流/oriDataset/2010-2015.xlsx")
     data = origindata.to_numpy()
     data = data[:, [2, 0, 1]]
 
@@ -165,7 +168,7 @@ def load_my_data():
     data = np.column_stack((data, newCol2))
     for i in range(len(data)):
         # print(data[i][1
-        data[i][1] = data[i][1].split('.')
+        data[i][1] = data[i][1].split(".")
         data[i][3] = int(data[i][1][1])
         data[i][4] = int(data[i][1][2])
         data[i][1] = int(data[i][1][0])
@@ -181,7 +184,7 @@ def load_my_data():
     return data
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     run_train_lstm()
     # run_train_gru()
     # run_origin()

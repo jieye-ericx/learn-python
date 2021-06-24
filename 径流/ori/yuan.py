@@ -161,27 +161,27 @@ def run_train_lstm():
     print("Training Start")
     for e in range(384):
         optimizer.zero_grad()  # 梯度清零（=net.zero_grad()
-        
+
         out = net(batch_var_x)
         loss = criterion(out, batch_var_y)
         # loss = (out - batch_var_y) ** 2 * weights
         loss = loss.mean()
-        
+
         loss.backward()  # 反向传播
-        
-         optimizer.step()  # 更新参数
+
+        optimizer.step()  # 更新参数
 
         if e % 64 == 0:
             print("Epoch: {:4}, Loss: {:.5f}".format(e, loss.item()))
-    torch.save(net.state_dict(), "{}/net.pth".format(mod_dir))
-    print("Save in:", "{}/net.pth".format(mod_dir))
+    # torch.save(net.state_dict(), "{}/net.pth".format(mod_dir))
+    # print("Save in:", "{}/net.pth".format(mod_dir))
 
     """eval"""
-    net.load_state_dict(
-        torch.load(
-            "{}/net.pth".format(mod_dir), map_location=lambda storage, loc: storage
-        )
-    )
+    # net.load_state_dict(
+    #     torch.load(
+    #         "{}/net.pth".format(mod_dir), map_location=lambda storage, loc: storage
+    #     )
+    # )
     net = net.eval()
     # 这里把上面训练好的模型保存再取出，然后划分出测试集进行训练
     test_x = data_x.copy()
@@ -209,7 +209,7 @@ def run_train_lstm():
     pred_y = pred_y.cpu().data.numpy()
 
     diff_y = pred_y[train_size:] - data_y[train_size:-1]
-    l1_loss = np.mean(np.abs(diff_y))
+    l1_loss = np.mean(np.abs(diff_y))\`)|_`
     l2_loss = np.mean(diff_y ** 2)
     print("L1: {:.3f}    L2: {:.3f}".format(l1_loss, l2_loss))
 
@@ -217,7 +217,8 @@ def run_train_lstm():
     plt.plot(data_y, "b", label="real", alpha=0.3)
     plt.plot([train_size, train_size], [-1, 2], color="k", label="train | pred")
     plt.legend(loc="best")
-    plt.savefig("lstm_reg.png")
+    plt.show()
+    # plt.savefig("lstm_reg.png")
     plt.pause(4)
 
 
